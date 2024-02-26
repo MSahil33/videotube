@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import bcrypt from "bcrypt";
-import { jwt } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 // Define the user schema
 const userSchema = new Schema(
@@ -53,9 +53,9 @@ const userSchema = new Schema(
 ); // Include createdAt and updatedAt fields
 
 // Middleware to hash the password before saving the user document using the bcrypt
-userSchema.pre("save", function (next) {
+userSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
-    this.password = bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(this.password, 10);
   }
   next();
 });
@@ -95,5 +95,6 @@ userSchema.methods.generateRefreshToken = function () {
     }
   );
 };
+
 // Create the User model
 export const User = new mongoose.model("User", userSchema);

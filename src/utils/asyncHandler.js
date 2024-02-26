@@ -29,7 +29,7 @@ const asyncHandler = (requestHandler) => {
         try {
             // Waiting for the requestHandler function to complete asynchronously
             await requestHandler(req, res, next)
-        } catch (error) {
+        } catch (err) {
             // If an error occurs, sending an error response back to the client
             res.status(err.code || 500).json({
                 success: false,

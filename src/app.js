@@ -35,6 +35,16 @@ app.use(
 app.use(express.static("public"));
 
 // This is used to access and set the cookies data from the client  side
-app.use(cookieParser())
+app.use(cookieParser());
+
+// Using the routes
+import userRouter from "./routes/user.routes.js";
+
+
+// url for handling the user related operations
+app.use("/api/v1/users",userRouter);
+
+// the above code will display the url as
+// http://localhost:8000/api/v1/users/
 
 export { app };
