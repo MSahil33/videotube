@@ -7,7 +7,7 @@ import { app } from "./app.js";
 
 // Note : while using modular syantx for using dotenv make sure that you use this flag "-r dotenv/config --experimental-json-modules ' while running the application 
 dotenv.config({
-    path:"./env"
+    path:"./.env"
 })
 
 // This is the default of the dotenv 

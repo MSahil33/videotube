@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloud } from "../utils/cloudinary.js";
-import {ApiResponse} from "../utils/ApiResponse.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 // creating a controllers for handling all the user related operation
 
@@ -28,31 +28,29 @@ const userRegister = asyncHandler(async (req, res) => {
 
   // Step-2 : Validation (checking whether the any of the fiel is empty )
 
-  if (
-    [fullName, email, username, password].some((field) => field?.trim() === "")
-  ) {
-    throw new ApiError(400, "All fields are required");
-  }
+  // if (
+  //   [fullName, email, username, password].some((field) => field?.trim() === "")
+  // ) {
+  //   throw new ApiError(400, "All fields are required");
+  // }
 
   // -------------------------------or-------------------------------
 
-  // if(fullName===""){
-  //     throw new ApiError(400,"Full Name is required");
-  // }else if(email==""){
-  //     throw new ApiError(400,"Email is required");
-  // }else if(username==""){
-  //     throw new ApiError(400,"username is required");
-  // }else if(password==""){
-  //     throw new ApiError(400,"Password is required");
-  // }
+  if(fullName===""){
+      throw new ApiError(400,"Full Name is required");
+  }else if(email==""){
+      throw new ApiError(400,"Email is required");
+  }else if(username==""){
+      throw new ApiError(400,"username is required");
+  }else if(password==""){
+      throw new ApiError(400,"Password is required");
+  }
 
   // Step-3 : Checking whether the user already exist or not(using the email and username)
 
-  const existingUserEmail = User.findOne({ email });
-  const existingUserName = User.findOne({ username });
+  const existingUserEmail = await User.findOne({ email });
+  const existingUserName = await User.findOne({ username });
 
-  // console.log(existingUserEmail);
-  // console.log(existingUserName);
 
   if (existingUserName) {
     throw new ApiError(409, "Username is not available");
@@ -73,8 +71,17 @@ const userRegister = asyncHandler(async (req, res) => {
 
   // Step-4 : Checking for the image(avatar,cover image..etc)
 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  let avatarLocalPath;
+  if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length >0){
+    avatarLocalPath = req.files.avatar[0].path;
+  }
+
+  let coverImageLocalPath;
+  if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0){
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
+  // const avatarLocalPath = req.files?.avatar[0]?.path;
+  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar image is required");
@@ -101,19 +108,20 @@ const userRegister = asyncHandler(async (req, res) => {
     coverImage: coverImage?.url || "", //It is a optional field
   });
 
-  const getNewUser = User.findById(user._id).select("-password -refreshToken");
+  const createdUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
   // 8. Checking whether the user is created or not
-  if (!getNewUser) {
+  if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering a user!!");
   }
 
   //   9. Sending back the data to the application or the frontend
 
-  res.status(201).json(
-    new ApiResponse(200,getNewUser,"User created succesfully!!")
-  )
-
+  return res.status(201).json(
+    new ApiResponse(200, createdUser, "User created succesfully!!")
+  );
 });
 
 export default userRegister;

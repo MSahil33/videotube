@@ -39,7 +39,7 @@ const userSchema = new Schema(
     // Refresh token field
     refreshToken: {
       type: String,
-      required: true, // The refresh token field is required
+      // required: true, 
     },
     // Watch history field
     watchHistory: [
