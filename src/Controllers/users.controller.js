@@ -3,6 +3,14 @@ import { ApiError } from "../utils/ApiErrors.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
+
+// Here is the secure options to be used while setting the cookies
+// Now seeting the options for the cookies
+const options = {
+  http: true,
+  secure: true,
+};
 
 // creating a controllers for handling all the user related operation
 
@@ -255,20 +263,81 @@ const userLogout = asyncHandler(async (req, res) => {
     }
   );
 
-  // Now seeting the options for the cookies
-  const options = {
-    http: true,
-    secure: true,
-  };
-
   // Now sending the response back
 
-
   return res
-  .status(200)
-  .clearCookie("accessToken", options)
-  .clearCookie("refreshToken", options)
-  .json(new ApiResponse(200, {}, "User logged Out"));
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
-export { userRegister, userLogin, userLogout };
+// instead of asking for the login credentials for each time he vsiits the website we can store the acces and refresh token in the browser and refreshToken into the database
+
+// Note : accesToken has a short lifetime and refreshToken has the  long lifetime
+// By using the accesToken we can authorized the user without its login credentials
+// As the accesToken has the short lifetime so we can generate it again using the refreshToken stored in the cookie of the local browser and database entry of that user
+
+// whenever a user visits or request we can use this accesToken to authorize the user
+
+// Creating a method to refresh or regenerate the acces token such that the user does not need to enter the login credentials whenever he visit the site
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    // Getting the already saved refresh token in the request body from the client side
+    const incomingRefreshToken =
+      req.cookies.refreshToken || req.body.refreshToken;
+
+    if (!incomingRefreshToken) {
+      throw new ApiError(401, "Unauthorized request");
+    }
+
+    // Now decoding the token saved in the cookies in encrypted using jwt
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    // Now this token has the user id of the current logged in user which we have saved in the cookie so now accessing that user_id from the decodedToken
+
+    const user = await User.findById(decodedToken._id);
+    if (!user) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // Now checking whether the refreshToken stored in the database entry of the user and local storage cookie of the user
+    if (incomingRefreshToken !== user?.refreshToken) {
+      throw new ApiError(
+        401,
+        "Invalid refresh token or refresh token is expired"
+      );
+    }
+
+    // Now generate a new access and refreshtoken
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+
+    // now returning back the response by setting the new acces and refreshtoken
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken,
+            refreshToken: newRefreshToken,
+          },
+          "access token re-generated succesfully"
+        )
+      );
+
+
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid refresh token");
+  }
+});
+
+export { userRegister, userLogin, userLogout,refreshAccessToken };

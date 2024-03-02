@@ -1,13 +1,18 @@
 import { Router } from "express";
-import { userRegister,userLogin, userLogout } from "../Controllers/users.controller.js";
-import {upload} from "../Middlewares/multer.middlewares.js";
-import {verifyJWT} from "../Middlewares/auth.middlewares.js";
+import {
+  userRegister,
+  userLogin,
+  userLogout,
+  refreshAccessToken,
+} from "../Controllers/users.controller.js";
+import { upload } from "../Middlewares/multer.middlewares.js";
+import { verifyJWT } from "../Middlewares/auth.middlewares.js";
 
 const userRouter = Router();
 
 // Defining the route for handling the user registration and all the loginc for handling the user registeration is written in users.controllers.js file
 
-// Here we are also using a middleware for also handling the file (multer middleware) while registering of the user 
+// Here we are also using a middleware for also handling the file (multer middleware) while registering of the user
 
 userRouter.route("/register").post(
   upload.fields([
@@ -23,11 +28,13 @@ userRouter.route("/register").post(
   userRegister
 );
 
-
 // Route for the user login
 userRouter.route("/login").post(userLogin);
 
 // Route for user logout(here we are also using the verifyJWT middleware for the user logout)
-userRouter.route("/logout").post(verifyJWT,userLogout);
+userRouter.route("/logout").post(verifyJWT, userLogout);
+
+// Route for regenrating the acces token and refresh token
+userRouter.route("/refresh-token").post(refreshAccessToken);
 
 export default userRouter;
