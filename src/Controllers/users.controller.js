@@ -172,8 +172,8 @@ const userLogin = asyncHandler(async (req, res) => {
 
   // Step-2 & 3: Validation on the inputs
 
-  if (!email || !username) {
-    throw new ApiError(400, "username and password is required!");
+  if (!(email || username)) {
+    throw new ApiError(400, "username or password is required!");
   }
 
   // Step-4 : Getting or finding the user with the email or password
@@ -263,11 +263,12 @@ const userLogout = asyncHandler(async (req, res) => {
 
   // Now sending the response back
 
+
   return res
-    .status(200)
-    .clearCookie("accessToken", accessToken, options)
-    .clearCookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(200,{},"User logged out succesfully"))
+  .status(200)
+  .clearCookie("accessToken", options)
+  .clearCookie("refreshToken", options)
+  .json(new ApiResponse(200, {}, "User logged Out"));
 });
 
 export { userRegister, userLogin, userLogout };
