@@ -456,7 +456,6 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     );
 });
 
-
 // Updating the cover image
 const updateCoverImage = asyncHandler(async (req, res) => {
   // Getting the local file path from the multer middleware which we have created
@@ -496,6 +495,105 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     );
 });
 
+// Controller for getting the channel profile details using mongodb aggregation pipelines
+
+const getUserChannelDetails = asyncHandler(async (req, res) => {
+  // Getting the channel name or channel user user_name from the url
+
+  const username = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(401, "Missing channel or username");
+  }
+
+  // Creating a mongodb aggregation pipleine to get the no. of subscriber to that channel and the no. of channels to which the current viweing channels is subscribedTo
+
+  // It is similar to join operation in the sql queries for counting the no. of subscribers by joining the two tables
+
+  //Mongodb aggregation pipelines
+  const channel = await User.aggregate([
+    // 1st pipeline : firstly getting the channel details from the channel username acquired above
+    {
+      $match: {
+        username: username?.toLowerCase(),
+      },
+    },
+
+    // 2nd pipeline : joining the user document with the subscription document to get the list of  documents of all subscribers for the current equipped channel username suing lookup functionality in mongodb
+
+    {
+      $lookup: {
+        from: "subscriptions", //name of the document to which it has to be joined
+        localField: "_id", //based on the current user_name and channel id  we are joining with subscriptions collection (similar to where clause or "ON" operation in join )
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    // 3rd pipeline to get the list of all channels to which the current user or channel is subscribed to
+    {
+      $lookup: {
+        from: "subscriptions", //name of the document to which it has to be joined
+        localField: "_id", //based on the current user_name and channel id  we are joining with subscriptions collection (similar to where clause or "ON" operation in join )
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    // 4th pipeline to create or add a new field in the documnent to count the no. of subscriber and no. of channels to which the current user is susbscribedTo.
+
+    {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+        channelUserSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+
+        // Now adding a new field to the document whether the current logged user is subscribed to the viewing channel or not
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+
+    // 5th pipeline to get only the neccesary fiels which are required to show on the user channel
+    {
+      // Using project we can set the fields on which  we want our response to consist and senf it to the user
+      $project: {
+        username: 1,
+        email: 1,
+        fullName: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribersCount: 1,
+        channelUserSubscribedToCount: 1,
+        isSubscribed: 1,
+      },
+
+      // only the above mentioned field will get to front end
+    },
+  ]);
+
+  // Now sending the channel to the frontend
+
+  if (!channel?.length) {
+    throw new ApiError(404, "Channel does not exists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channel[0],
+        "User channel details fetched successfully"
+      )
+    );
+});
 
 export {
   userRegister,
@@ -506,5 +604,5 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateCoverImage
+  updateCoverImage,
 };
