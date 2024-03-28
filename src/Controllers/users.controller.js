@@ -4,6 +4,7 @@ import { User, User } from "../models/user.model.js";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 // Here is the secure options to be used while setting the cookies
 // Now seeting the options for the cookies
@@ -595,6 +596,65 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
     );
 });
 
+// Controller to get the watch history of the user using the aggregation pipelines
+
+const getWatchHsitory = asyncHandler(async (req, res) => {
+  // getting the watch history of the current logged in user using the aggregation pipelines
+
+  const userHist = await User.aggregate([
+    // 1st pipeline : firstly finding the current logged in user using "$match" with the _id
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+
+    // 2nd pipeline : joining the videos model with the current user 's watched video list and adding it all the document details of all the watched videos into the watchHistory field using "$lookup"
+    {
+      $lookup: {
+        from: "videos", //name of the model
+        localField: "watchHistory", //field name of the current user model
+        foreignField: "_id", // field name of video model which is going to be used here for matching
+        as: "watchHist", //alias name of the new field after joining
+        // Creating a sub pipeline or nested pipelines
+        pipeline: [
+          // To get the details of all the owner or channel details of that particular video
+          {
+            $lookup: {
+              from: "users", //name of the model
+              localField: "owner", //field name of the current video model
+              foreignField: "_id", // field name of video model which is going to be used here for matching
+              as: "channelOwner", //alias name of the new field after joining
+              // Creating a further pipeline to get only some of the fields of the channel to which that watched video belongs to
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    avatar: 1,
+                    username: 1,
+                  },
+                },
+              ],
+            },
+          },
+
+          // Creating a field to add all the necessary fields of that watched video
+          {
+            $addFields: {
+              owner: {
+                $first: "$channelOwner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userHist[0].watchHist, "Watch history fetched successfully"));
+});
 export {
   userRegister,
   userLogin,
@@ -605,5 +665,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateCoverImage,
-  getUserChannelDetails
+  getUserChannelDetails,
+  getWatchHsitory
 };
