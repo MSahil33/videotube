@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiErrors.js";
-import { User, User } from "../models/user.model.js";
+import { User } from "../models/user.model.js";
 import { uploadToCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
@@ -256,7 +256,7 @@ const userLogout = asyncHandler(async (req, res) => {
     userId,
     {
       $set: {
-        refreshToken: undefined,
+        refreshToken: 1,
       },
     },
     {
@@ -390,14 +390,16 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   // Here we are only updating the fullName ,email and username of that user
 
   const { fullName, email, username } = req.body;
+  console.log(fullName);
 
-  if (!fullName || !email || !username) {
+  
+  if (!(fullName || email || username)) {
     throw new ApiError(400, "All fields are required!!");
   }
 
   // Updating the details
   const user_id = req.user?._id;
-  const updated_user = await findByIdAndUpdate(
+  const updated_user = await User.findByIdAndUpdate(
     user_id,
     {
       // $set operator is used to update in the database
@@ -501,9 +503,10 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 const getUserChannelDetails = asyncHandler(async (req, res) => {
   // Getting the channel name or channel user user_name from the url
 
-  const username = req.params;
+  const {username} = req.params;
+  // const user_name = username.username;
 
-  if (!username?.trim()) {
+  if (!(username?.trim())) {
     throw new ApiError(401, "Missing channel or username");
   }
 
